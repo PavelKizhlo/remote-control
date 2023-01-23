@@ -5,6 +5,7 @@ import { ClientCommands, ParsedCommand } from '../types.js';
 import { Button, mouse } from '@nut-tree/nut-js';
 import { calcRectPoints } from '../utils/calcRectPoints.js';
 import { isOutside } from '../utils/checkPointPos.js';
+import { calcCirclePoints } from '../utils/calcCirclePoints.js';
 
 class WsController {
   declare command: ParsedCommand;
@@ -37,7 +38,11 @@ class WsController {
         await this.getPosition();
         break;
       case ClientCommands.Circle:
-        await this.drawCircle();
+        try {
+          await this.drawCircle();
+        } catch (err) {
+          console.log(warning((<Error>err).message));
+        }
         break;
       case ClientCommands.Rect:
       case ClientCommands.Square:
@@ -83,7 +88,14 @@ class WsController {
   }
 
   private async drawCircle() {
-    console.log(this.command.param1);
+    const radius = this.command.param1!;
+    const points = await calcCirclePoints(radius);
+
+    for (let i = 0; i < 36; i++) {
+      await mouse.pressButton(Button.LEFT);
+      await mouse.move([points[i]!, points[i === 35 ? 0 : i + 1]!]);
+      await mouse.releaseButton(Button.LEFT);
+    }
   }
 
   private async drawRect() {
