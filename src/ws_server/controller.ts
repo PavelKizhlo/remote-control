@@ -1,8 +1,9 @@
 import type { WebSocket } from 'ws';
 import { message } from '../utils/paintConsole.js';
 import { parseCommand } from '../utils/parseCommand.js';
-import { ParsedCommand, ClientCommands } from '../types.js';
-import { mouse } from '@nut-tree/nut-js';
+import { ClientCommands, ParsedCommand } from '../types.js';
+import { Button, mouse } from '@nut-tree/nut-js';
+import { calcRectPoints } from '../utils/calcRectPoints.js';
 
 class WsController {
   declare command: ParsedCommand;
@@ -22,14 +23,8 @@ class WsController {
   private async handleCommands() {
     switch (this.command.action) {
       case ClientCommands.Up:
-        await this.mouseMove();
-        break;
       case ClientCommands.Down:
-        await this.mouseMove();
-        break;
       case ClientCommands.Left:
-        await this.mouseMove();
-        break;
       case ClientCommands.Right:
         await this.mouseMove();
         break;
@@ -40,10 +35,8 @@ class WsController {
         await this.drawCircle();
         break;
       case ClientCommands.Rect:
-        await this.drawRect();
-        break;
       case ClientCommands.Square:
-        await this.drawSquare();
+        await this.drawRect();
         break;
       case ClientCommands.PrintScreen:
         await this.getPrntScrn();
@@ -81,11 +74,15 @@ class WsController {
   }
 
   private async drawRect() {
-    console.log(this.command.param1, this.command.param2);
-  }
+    const width = this.command.param1!;
+    const height = this.command.param2 ?? this.command.param1!;
+    const points = await calcRectPoints(width, height);
 
-  private async drawSquare() {
-    console.log(this.command.param1);
+    for (let i = 0; i < 4; i++) {
+      await mouse.pressButton(Button.LEFT);
+      await mouse.move([points[i]!, points[i === 3 ? 0 : i + 1]!]);
+      await mouse.releaseButton(Button.LEFT);
+    }
   }
 
   private async getPrntScrn() {
