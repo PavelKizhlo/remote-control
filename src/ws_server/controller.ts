@@ -1,9 +1,10 @@
 import type { WebSocket } from 'ws';
-import { message } from '../utils/paintConsole.js';
+import { message, warning } from '../utils/paintConsole.js';
 import { parseCommand } from '../utils/parseCommand.js';
 import { ClientCommands, ParsedCommand } from '../types.js';
 import { Button, mouse } from '@nut-tree/nut-js';
 import { calcRectPoints } from '../utils/calcRectPoints.js';
+import { isOutside } from '../utils/checkPointPos.js';
 
 class WsController {
   declare command: ParsedCommand;
@@ -26,7 +27,11 @@ class WsController {
       case ClientCommands.Down:
       case ClientCommands.Left:
       case ClientCommands.Right:
-        await this.mouseMove();
+        try {
+          await this.mouseMove();
+        } catch (err) {
+          console.log(warning((<Error>err).message));
+        }
         break;
       case ClientCommands.Position:
         await this.getPosition();
@@ -36,7 +41,11 @@ class WsController {
         break;
       case ClientCommands.Rect:
       case ClientCommands.Square:
-        await this.drawRect();
+        try {
+          await this.drawRect();
+        } catch (err) {
+          console.log(warning((<Error>err).message));
+        }
         break;
       case ClientCommands.PrintScreen:
         await this.getPrntScrn();
@@ -57,6 +66,10 @@ class WsController {
     const newPosition = increase
       ? { ...position, [axis]: position[axis] + offset }
       : { ...position, [axis]: position[axis] - offset };
+
+    if (await isOutside(newPosition)) {
+      throw new Error('Cannot move cursor out of the screen');
+    }
 
     console.log('Result: ', message(`new position: ${JSON.stringify(newPosition)}`));
     await mouse.setPosition(newPosition);
