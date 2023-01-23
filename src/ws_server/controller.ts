@@ -1,86 +1,94 @@
 import type { WebSocket } from 'ws';
 import { message } from '../utils/paintConsole.js';
 import { parseCommand } from '../utils/parseCommand.js';
-import type { ParsedCommand } from '../types.js';
+import { ParsedCommand, ClientCommands } from '../types.js';
+import { mouse } from '@nut-tree/nut-js';
 
 class WsController {
+  declare command: ParsedCommand;
+
   constructor(private ws: WebSocket) {}
 
   start() {
-    this.ws.on('message', (data) => {
+    this.ws.on('message', async (data) => {
       const receivedMessage = data.toString();
       console.log('Received command: ', message(receivedMessage));
 
-      const command = parseCommand(receivedMessage);
-      this.handleCommands(command);
+      this.command = parseCommand(receivedMessage);
+      await this.handleCommands();
     });
   }
 
-  private handleCommands(command: ParsedCommand) {
-    switch (command.action) {
-      case 'mouse_up':
-        this.mouseUp(command.param1!);
+  private async handleCommands() {
+    switch (this.command.action) {
+      case ClientCommands.Up:
+        await this.mouseMove();
         break;
-      case 'mouse_down':
-        this.mouseDown(command.param1!);
+      case ClientCommands.Down:
+        await this.mouseMove();
         break;
-      case 'mouse_left':
-        this.mouseLeft(command.param1!);
+      case ClientCommands.Left:
+        await this.mouseMove();
         break;
-      case 'mouse_right':
-        this.mouseRight(command.param1!);
+      case ClientCommands.Right:
+        await this.mouseMove();
         break;
-      case 'mouse_position':
-        this.getPosition();
+      case ClientCommands.Position:
+        await this.getPosition();
         break;
-      case 'draw_circle':
-        this.drawCircle(command.param1!);
+      case ClientCommands.Circle:
+        await this.drawCircle();
         break;
-      case 'draw_rectangle':
-        this.drawRect(command.param1!, command.param2!);
+      case ClientCommands.Rect:
+        await this.drawRect();
         break;
-      case 'draw_square':
-        this.drawSquare(command.param1!);
+      case ClientCommands.Square:
+        await this.drawSquare();
         break;
-      case 'prnt_scrn':
-        this.getPrntScrn();
+      case ClientCommands.PrintScreen:
+        await this.getPrntScrn();
         break;
     }
   }
 
-  mouseUp(yOffset: number) {
-    console.log(yOffset);
+  private async mouseMove() {
+    const position = await mouse.getPosition();
+    const offset = this.command.param1!;
+    const increase =
+      this.command.action === ClientCommands.Down || this.command.action === ClientCommands.Right;
+    const axis =
+      this.command.action === ClientCommands.Up || this.command.action === ClientCommands.Down
+        ? 'y'
+        : 'x';
+
+    const newPosition = increase
+      ? { ...position, [axis]: position[axis] + offset }
+      : { ...position, [axis]: position[axis] - offset };
+
+    console.log('Result: ', message(`new position: ${JSON.stringify(newPosition)}`));
+    await mouse.setPosition(newPosition);
   }
 
-  mouseDown(yOffset: number) {
-    console.log(yOffset);
+  private async getPosition() {
+    const position = await mouse.getPosition();
+
+    this.ws.send(`mouse_position ${position.x},${position.y}`);
+    console.log('Result: ', message(`current position: ${JSON.stringify(position)}`));
   }
 
-  mouseLeft(xOffset: number) {
-    console.log(xOffset);
+  private async drawCircle() {
+    console.log(this.command.param1);
   }
 
-  mouseRight(xOffset: number) {
-    console.log(xOffset);
+  private async drawRect() {
+    console.log(this.command.param1, this.command.param2);
   }
 
-  getPosition() {
-    console.log('it work');
+  private async drawSquare() {
+    console.log(this.command.param1);
   }
 
-  drawCircle(radius: number) {
-    console.log(radius);
-  }
-
-  drawRect(width: number, height: number) {
-    console.log(width, height);
-  }
-
-  drawSquare(width: number) {
-    console.log(width);
-  }
-
-  getPrntScrn() {
+  private async getPrntScrn() {
     console.log('it work');
   }
 }

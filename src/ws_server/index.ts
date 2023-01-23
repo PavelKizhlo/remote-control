@@ -13,3 +13,7 @@ wss.on('connection', (ws) => {
   const controller = new WsController(ws);
   controller.start();
 });
+
+process.on('SIGINT', () => {
+  wss.close();
+});
