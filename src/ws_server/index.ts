@@ -1,4 +1,4 @@
-import { WebSocketServer } from 'ws';
+import { createWebSocketStream, WebSocketServer } from 'ws';
 import { info } from '../utils/paintConsole.js';
 import WsController from './controller.js';
 
@@ -10,7 +10,9 @@ const wss = new WebSocketServer({ host: WS_HOST, port: WS_PORT });
 wss.on('connection', (ws) => {
   console.log(info(`Start WebSocket server on the ws://${WS_HOST}:${WS_PORT}`));
 
-  const controller = new WsController(ws);
+  const duplex = createWebSocketStream(ws, { encoding: 'utf8', decodeStrings: false });
+
+  const controller = new WsController(duplex);
   controller.start();
 });
 

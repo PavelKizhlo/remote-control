@@ -1,4 +1,4 @@
-import type { WebSocket } from 'ws';
+import type { Duplex } from 'stream';
 import { message, warning } from '../utils/paintConsole.js';
 import { parseCommand } from '../utils/parseCommand.js';
 import { ClientCommands, ParsedCommand } from '../types.js';
@@ -10,14 +10,13 @@ import { calcCirclePoints } from '../utils/calcCirclePoints.js';
 class WsController {
   declare command: ParsedCommand;
 
-  constructor(private ws: WebSocket) {}
+  constructor(private duplex: Duplex) {}
 
   start() {
-    this.ws.on('message', async (data) => {
-      const receivedMessage = data.toString();
-      console.log('Received command: ', message(receivedMessage));
+    this.duplex.on('data', async (data) => {
+      console.log('Received command: ', message(data));
 
-      this.command = parseCommand(receivedMessage);
+      this.command = parseCommand(data);
       await this.handleCommands();
     });
   }
@@ -83,7 +82,7 @@ class WsController {
   private async getPosition() {
     const position = await mouse.getPosition();
 
-    this.ws.send(`mouse_position ${position.x},${position.y}`);
+    this.duplex.write(`mouse_position ${position.x},${position.y}`, 'utf8');
     console.log('Result: ', message(`current position: ${JSON.stringify(position)}`));
   }
 
