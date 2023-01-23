@@ -1,8 +1,9 @@
 import type { Duplex } from 'stream';
+import Jimp from 'jimp';
 import { message, warning } from '../utils/paintConsole.js';
 import { parseCommand } from '../utils/parseCommand.js';
 import { ClientCommands, ParsedCommand } from '../types.js';
-import { Button, mouse } from '@nut-tree/nut-js';
+import { Button, mouse, Point, Region, screen } from '@nut-tree/nut-js';
 import { calcRectPoints } from '../utils/calcRectPoints.js';
 import { isOutside } from '../utils/checkPointPos.js';
 import { calcCirclePoints } from '../utils/calcCirclePoints.js';
@@ -52,7 +53,11 @@ class WsController {
         }
         break;
       case ClientCommands.PrintScreen:
-        await this.getPrntScrn();
+        try {
+          await this.getPrntScrn();
+        } catch (err) {
+          console.log(warning((<Error>err).message));
+        }
         break;
     }
   }
@@ -110,7 +115,23 @@ class WsController {
   }
 
   private async getPrntScrn() {
-    console.log('it work');
+    const position = await mouse.getPosition();
+    const outsideScreen =
+      (await isOutside(new Point(position.x + 200, position.y))) ||
+      (await isOutside(new Point(position.x, position.y + 200)));
+
+    if (outsideScreen) {
+      throw new Error('Cannot do screenshot, frame outside the screen');
+    }
+
+    const frame = new Region(position.x, position.y, 200, 200);
+    const bgrImage = await screen.grabRegion(frame);
+    const rgbImage = await bgrImage.toRGB();
+
+    const jimp = new Jimp(rgbImage);
+    const base64str = await jimp.getBase64Async(Jimp.MIME_PNG);
+    const base64 = base64str.replace('data:image/png;base64,', '');
+    this.duplex.write(`prnt_scrn ${base64}`, 'base64');
   }
 }
 
